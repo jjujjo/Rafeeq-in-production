@@ -1,0 +1,24 @@
+[project]
+name = "rafeeq-in-production"
+version = "0.1.0"
+description = "Capstone (Track 1): Rafeeq, Madar Municipal Services' bilingual permit assistant, as a production service"
+requires-python = ">=3.12,<3.14"
+dependencies = [
+    "openai>=3.30",
+    "anthropic>=1.0",
+    "pydantic>=2.12",
+    "python-dotenv>=1.1",
+    "httpx>=0.28",
+    "numpy>=2.0",
+    "pandas>=2.2",
+    "model2vec>=0.10",
+    "bm25s>=0.3",
+    "mcp>=2.3",
+    "fastapi>=0.150",
+    "uvicorn>=0.40",
+    "opentelemetry-sdk>=1.45",
+    "pytest>=9.0",
+]
+
+[tool.uv]
+package = false
