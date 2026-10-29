@@ -64,7 +64,7 @@ class Harness:
         if self.guarded and name == "send_email" and self.egress_problems(args):
             return "allow"  # before_tool blocks it: don't ask a human to approve what policy forbids anyway
         ok = bool(self.approve(name, args))
-        self.audit("approval", tool=name, args=args, approved=ok)
+        self.audit("approval", tool=name, args=redact(args), approved=ok)
         return "allow" if ok else "deny"
 
     def before_tool(self, name: str, args: dict) -> str | None:

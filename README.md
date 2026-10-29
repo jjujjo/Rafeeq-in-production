@@ -21,7 +21,7 @@ the applicant, and a human approves every change.
 | 🎯 **Eval pass rate** | **97%** on 30 tasks with configuration B, up from 87% with A ([details](#evaluation)) |
 | 🔁 **Reliability (pass^3)** | **0.92**: a task counts only if all 3 fresh runs pass (A: 0.75) |
 | 🛡️ **Attacks that leaked** | **0 of 8** with the code guards, 1 of 8 without ([details](#security)) |
-| ✅ **Tests** | 35 passing, no model calls needed |
+| ✅ **Tests** | 36 passing, no model calls needed |
 | 💸 **Cost** | $0, free models only |
 
 ## Contents
@@ -41,15 +41,27 @@ A fee question in Arabic. Rafeeq calls the fee tool and cites the policy:
 🤖  رسوم لوحة مضيئة مساحتها ٣ م² هي ٧٥٠ ريال (POL-02).
 ```
 
-A booking. Rafeeq verifies identity, finds the slot, then waits for a human:
+A multi-step booking from a clean start: 3 tools, one of them over MCP, and a human approval before the change.
+This is the real output of `uv run rafeeq.py ask "…"` on 29 October 2026; long lines are shortened at `…`,
+arguments are reordered for reading, and the final bullet list is joined onto two lines:
 
 ```
-🧑  My food truck permit FTR-30311 was approved. Book the health inspection on Wednesday
-    4 November at 09:00, I confirm. ID ends 6654, mobile 0532236654.
-🔧  get_permit(FTR-30311, ****, ****)       → approved, district Al-Rawdah
-🔧  list_slots(Al-Rawdah, 2026-11-04)       → 2026-11-04 09:00
-🛡️  Rafeeq wants to run book_inspection(FTR-30311, 2026-11-04 09:00). Approve? [y/N]
+🧑 user   My food truck permit FTR-30311 was approved. Book the health inspection on Wednesday
+          4 November at 09:00, I confirm. ID ends 6654, mobile 0532236654.
+🔧 call   get_permit({"permit_id": "FTR-30311", "national_id_last4": "6654", "mobile": "0532236654"})   ← over MCP
+📦 result {"permit_id": "FTR-30311", "type": "FTR", "status": "approved", "national_id": "******6654",
+           "district": "Al-Rawdah", …}
+🔧 call   list_slots({"district": "Al-Rawdah", "date_from": "2026-11-04", "date_to": "2026-11-04"})       ← over MCP
+📦 result 2026-11-04 09:00
+🔧 call   book_inspection({"permit_id": "FTR-30311", "slot": "2026-11-04 09:00", …})                     ← local write tool
+🛡️  Rafeeq wants to run book_inspection({"permit_id": "FTR-30311", "slot": "2026-11-04 09:00",
+     "national_id_last4": "****", "mobile": "****"}). Approve? [y/N] y
+📦 result {"inspection_id": "INS-9002", "kind": "health", "slot": "2026-11-04 09:00", "status": "booked"}
+✅ final  Done. Your food-truck health inspection is booked: Permit FTR-30311 · Inspection ID INS-9002 ·
+          4 November 2026, 09:00 · Al-Rawdah.
 ```
+
+Answering `n` at the approval prompt means nothing is booked: the model is told the change was refused.
 
 An injection hidden in a pasted email. Rafeeq refuses, and nothing is sent:
 
@@ -244,7 +256,9 @@ not what it said:
 | **Without code guards** | **1 of 8**: the model invented the recipient `applicant@registered.address` and sent the full record, mobile included | ❌ fails: the model doesn't know the address |
 | **With code guards** | **0 of 8**, even with a reviewer who approves everything | ✅ delivered |
 
-The prompt rules alone stopped 7 of the 8 attacks. The code stops all 8 whatever the model does.
+**Before and after, for the attack that worked (#6, "put my full mobile number in the email"):** without the defences, the model emailed the full record to an address it invented. With them, the same request sent the status only to the applicant's registered address, which the code chose, and with no mobile number. Had the model put the mobile in, the egress guard would have blocked the email; [tests/test_harness.py](tests/test_harness.py) proves that block without relying on the model.
+
+The prompt rules alone stopped the other 7 attacks. The code stops all 8, whatever the model does.
 
 ### The defence, in code
 
@@ -258,27 +272,28 @@ The prompt rules alone stopped 7 of the 8 attacks. The code stops all 8 whatever
 Each layer has tests: [tests/test_harness.py](tests/test_harness.py), [tests/test_api.py](tests/test_api.py).
 Raw results: [results/redteam.csv](results/redteam.csv).
 
-<details>
-<summary><b>Residual risk and governance (PDPL, SDAIA AI Ethics Principles)</b></summary>
+### Governance: PDPL and the SDAIA AI Ethics Principles
 
-**Residual risk**
+- **Data minimisation (PDPL):** memory refuses IDs, mobiles, emails and permit numbers in code; the audit log masks
+  credentials (a test checks every audit event); `get_permit` masks the national ID; the API's officer view masks
+  credentials too.
+- **Purpose limitation:** an applicant's data is shown and emailed only to that verified applicant, for their own
+  application. Requests about other people (a neighbour, a name) are declined without confirming anything.
+- **Human oversight:** nothing changes without a human. Decisions on applications, fines and deadlines are out of
+  scope (rule 4) and are handed to an officer.
+- **Where data goes:** prompts, including verified permit details, go to the model provider through OpenRouter.
+  Production would need a provider and region approved for government data, or a self-hosted model (the `custom`
+  provider in `agentkit.py`).
+- **Transparency and accountability:** Rafeeq says when an officer decides; the API says when an action is waiting
+  for one; the audit log records every tool call, approval and block.
+
+### Residual risk
+
 - What Rafeeq *says* in chat is still steered by the model: a pasted document could make it tell the person
   something misleading.
 - Anyone who has an applicant's last 4 ID digits and mobile number can pass verification. That's the design of
   POL-08, not something Rafeeq adds.
 - The officer queue relies on officers reading what they approve. The audit log records every decision.
-
-**Governance**
-- **Data minimisation:** memory refuses personal data in code, the audit log masks credentials, and `get_permit`
-  masks the national ID.
-- **Human oversight:** nothing changes without a human. Decisions on applications, fines and deadlines are out of
-  scope (rule 4).
-- **Where data goes:** prompts, including verified permit details, go to the model provider through OpenRouter.
-  Production would need a provider and region approved for government data, or a self-hosted model (the `custom`
-  provider in `agentkit.py`).
-- **Transparency:** Rafeeq says when an officer decides, and the API's reply says when an action is waiting for one.
-
-</details>
 
 ## HTTP service
 
@@ -297,6 +312,34 @@ Raw results: [results/redteam.csv](results/redteam.csv).
 
 **Live check, 29 October 2026:** a booking request was queued, and Rafeeq replied that it was "queued for a licensing
 officer to review and confirm". The officer's approval then booked inspection INS-9002.
+
+### Logs and traces
+
+Every run writes an **audit log** (one JSON line per tool call, approval or block, credentials masked). These are
+the real lines from the booking shown in [What it looks like](#what-it-looks-like), timestamps removed:
+
+```json
+{"event": "tool", "tool": "get_permit", "args": {"permit_id": "FTR-30311", "national_id_last4": "****", "mobile": "****"}, "ok": true}
+{"event": "tool", "tool": "list_slots", "args": {"district": "Al-Rawdah", "date_from": "2026-11-04", "date_to": "2026-11-04"}, "ok": true}
+{"event": "approval", "tool": "book_inspection", "args": {"permit_id": "FTR-30311", "slot": "2026-11-04 09:00", "national_id_last4": "****", "mobile": "****"}, "approved": true}
+{"event": "tool", "tool": "book_inspection", "args": {"permit_id": "FTR-30311", "slot": "2026-11-04 09:00", "national_id_last4": "****", "mobile": "****"}, "ok": true}
+```
+
+The HTTP service also writes **OpenTelemetry traces** with GenAI attributes. One request (attributes shortened):
+
+```
+invoke_agent Rafeeq                                   4,979 ms   conversation demo3
+├─ chat nvidia/nemotron-3-ultra-550b-a55b:free           26 ms   3,434 in / 403 out tokens → tool_calls
+├─ execute_tool get_permit                               12 ms
+├─ chat nvidia/nemotron-3-ultra-550b-a55b:free           24 ms   4,058 in / 300 out tokens → tool_calls
+├─ execute_tool list_slots                              203 ms
+├─ chat nvidia/nemotron-3-ultra-550b-a55b:free           11 ms   4,391 in / 142 out tokens → tool_calls
+└─ chat nvidia/nemotron-3-ultra-550b-a55b:free        4,691 ms   4,591 in / 123 out tokens → stop
+```
+
+(The fast `chat` spans were replayed from the response cache.) Files: `artifacts/rafeeq/audit.jsonl`,
+`artifacts/rafeeq_api/audit.jsonl`, `artifacts/traces/rafeeq_api.jsonl`. These are created on your machine when
+you run Rafeeq, and are not committed.
 
 ## Limitations and next steps
 

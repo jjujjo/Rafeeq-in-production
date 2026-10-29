@@ -69,7 +69,7 @@ conversation.
 - Residual risk: what Rafeeq says in chat is still model-steered; prompts go to the model provider (PDPL: production
   needs an approved provider or a self-hosted model).
 
-**Slide 10: Thank you · Q&A.** Repo link · `uv run pytest -q` (35 tests) · `uv run redteam.py`.
+**Slide 10: Thank you · Q&A.** Repo link · `uv run pytest -q` (36 tests) · `uv run redteam.py`.
 
 ---
 

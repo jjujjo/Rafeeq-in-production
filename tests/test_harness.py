@@ -160,3 +160,12 @@ def test_a_queued_write_does_not_count_as_verification(m):
     h.after_tool("book_inspection", {"permit_id": "REN-10482", "national_id_last4": "0000", "mobile": "0500000000"},
                  json.dumps({"status": "queued_for_officer", "note": "..."}))
     assert h.verified == {}
+
+
+def test_no_audit_event_keeps_credentials(m, tmp_path):
+    h = H.Harness(m, lambda n, a: True, audit_file=tmp_path / "audit.jsonl")
+    args = {"permit_id": "FTR-30311", "slot": "2026-11-04 09:00", "national_id_last4": "6654", "mobile": "0532236654"}
+    h.permission("book_inspection", args)
+    h.after_tool("book_inspection", args, "{}")
+    log = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "6654" not in log and "0532236654" not in log and log.count('"approval"') == 1
