@@ -409,4 +409,4 @@ Built on the starter kit of the [SDAIA Academy Agentic AI Systems Engineering pr
   eval tasks in `data/`. Changes: a retrieval switch in the MCP server, two grader fixes in `evals.py`, and the API
   rebuilt around this project's harness and officer queue.
 - **New in this project:** `AGENTS.md`, `context.py`, `harness.py`, `retrieval.py`, `rafeeq.py`, `redteam.py`,
-  `tests/`, the charts (regenerate with `uv run docs/make_charts.py`), and the talk outline in [SLIDES.md](SLIDES.md).
+  `tests/`, and the charts (regenerate with `uv run docs/make_charts.py`).
