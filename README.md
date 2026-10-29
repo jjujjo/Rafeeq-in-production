@@ -1,5 +1,7 @@
 # Rafeeq in production · رفيق
 
+[Advanced Agentic AI Systems Engineering - SDAIA Academy](https://github.com/sdaiaacademy/agentic-ai/)
+
 **A bilingual permit assistant that can act on your behalf, but can't leak your data.**
 
 Rafeeq answers applicants of Madar Municipal Services in Arabic or English: what a permit costs, what the rules
@@ -8,7 +10,7 @@ the applicant, and a human approves every change.
 
 | Project | Details |
 |---|---|
-| **Program** | [Agentic AI Systems Engineering, SDAIA Academy](https://github.com/SDAIAAcademy/agentic-ai) · capstone |
+| **Program** | Capstone project of the program above |
 | **Track** | 1 · Rafeeq in production |
 | **Author** | Jood Rashed Alshehri |
 | **Model** | `nvidia/nemotron-3-ultra-550b-a55b:free` via OpenRouter, chosen because it passed our tool-call test in both languages while the course default was rate-limited |
@@ -321,6 +323,6 @@ invoke_agent Rafeeq                                   4,979 ms
 
 ## Credits
 
-Built on the starter kit of the [SDAIA Academy Agentic AI Systems Engineering program](https://github.com/SDAIAAcademy/agentic-ai):
+Built on the program's starter kit:
 `agentkit.py`, `madar.py`, `evals.py`, `prepare_data.py`, the MCP server, the base of the API, and the policies,
 skills and eval tasks in `data/`. Everything else is new in this project.
